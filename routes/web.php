@@ -28,6 +28,9 @@ Route::middleware([
     })->name('dashboard');
 
     Route::get('/', [PostController::class, 'welcome'])->name('welcome');
+    Route::get('/posts', [PostController::class, 'posts'])->name('posts');
+    
     Route::post('/', [PostController::class, 'create'])->name('post.create')->middleware([HandlePrecognitiveRequests::class]);
+
     Route::get('/{user}', [PostController::class, 'user'])->name('user');
 });

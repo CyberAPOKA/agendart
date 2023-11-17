@@ -26,6 +26,36 @@ const props = defineProps({
     posts: Object
 });
 
+const posts = ref(props.posts);
+
+const loadMorePosts = async () => {
+    const nextPage = posts.value.current_page + 1;
+    if (nextPage <= posts.value.last_page) {
+        try {
+            const response = await axios.get(route('posts', { page: nextPage }));
+            // console.log(response);
+            posts.value = {
+                ...posts.value,
+                data: [...posts.value.data, ...response.data.data],
+                current_page: response.data.current_page
+            };
+        } catch (error) {
+            console.error(error);
+        }
+    }
+};
+
+window.addEventListener('scroll', () => {
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+        loadMorePosts();
+    }
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', loadMorePosts);
+});
+
+
 function dateStringToTimeAgo(dateString) {
     const now = new Date();
     const date = new Date(dateString);
@@ -55,35 +85,6 @@ function dateStringToTimeAgo(dateString) {
         return `${years} anos atrás`;
     }
 }
-
-const posts = ref(props.posts);
-
-const loadMorePosts = async () => {
-    const nextPage = posts.value.current_page + 1;
-    if (nextPage <= posts.value.last_page) {
-        try {
-            const response = await axios.get(route('welcome', { page: nextPage }));
-            // console.log(response);
-            posts.value = {
-                ...posts.value,
-                data: [...posts.value.data, ...response.data.data],
-                current_page: response.data.current_page
-            };
-        } catch (error) {
-            console.error(error);
-        }
-    }
-};
-
-window.addEventListener('scroll', () => {
-    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
-        loadMorePosts();
-    }
-});
-
-onUnmounted(() => {
-    window.removeEventListener('scroll', loadMorePosts);
-});
 
 const disabledButton = computed(() => {
     return form.errors && Object.keys(form.errors).length > 0;
@@ -358,11 +359,30 @@ const scrollToTop = () => {
             </button>
         </div>
 
+        <div class="hidden lg:block fixed sm:bottom-0 sm:start-0 p-6 text-end z-10">
+            <Link :href="route('logout')" method="post" as="button"
+                class="p-4 bg-red-500 flex flex-col items-center justify-center rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ms-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white"
+                class="w-10 h-10">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+            </svg>
+            <span class="font-bold text-lg text-white">Sair</span>
+            </Link>
+        </div>
 
         <div
             class="fixed lg:hidden z-50 w-full h-16 max-w-lg -translate-x-1/2 bg-white border border-gray-200 bottom-0 left-1/2 dark:bg-gray-700 dark:border-gray-600">
 
-            <div class="flex items-center justify-center h-full w-full">
+            <div class="flex items-center justify-around h-full w-full">
+
+                <Link :href="route('logout')" method="post" as="button"
+                    class="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ms-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white"
+                    class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9" />
+                </svg>
+                </Link>
+
                 <button type="button" @click="openCreatePostModal"
                     class="inline-flex items-center justify-center w-10 h-10 font-medium bg-blue-600 rounded-full hover:bg-blue-700 group focus:ring-4 focus:ring-blue-300 focus:outline-none dark:focus:ring-blue-800">
                     <svg class="w-4 h-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
@@ -371,7 +391,6 @@ const scrollToTop = () => {
                             d="M9 1v16M1 9h16" />
                     </svg>
                 </button>
-
             </div>
         </div>
 
@@ -389,7 +408,7 @@ const scrollToTop = () => {
                     class="max-h-[30rem] lg:w-[30rem] mx-auto bg-cover w-full" />
                 <h2 class="text-left max-w-md pt-2">{{ post.comment }}</h2>
             </div>
-            
+
         </div>
     </div>
 
@@ -416,7 +435,7 @@ const scrollToTop = () => {
                     <UploadFileSvg />
                     <label for="dropzone-file-photo">
                         <div
-                            class="flex justify-evenly items-center gap-2 bg-indigo-600 px-6 py-3 text-white font-bold text-xs rounded-lg uppercase shadow-all hover:cursor-pointer">
+                            class="flex justify-evenly items-center gap-2 bg-blue-500 px-6 py-3 text-white font-bold text-xs rounded-lg uppercase shadow-all hover:cursor-pointer">
 
                             <span>Selecionar do computador</span>
                         </div>
@@ -457,11 +476,6 @@ const scrollToTop = () => {
                                 <h1 class="font-bold text-white border-b border-gray-900 pt-2 px-2 pb-2 text-center">
                                     Proporção
                                 </h1>
-                                <label class="py-4 px-2 hover:cursor-pointer" @click="selectedAspectRatio = null">
-                                    <div class="flex items-center gap-8 w-full">
-                                        <div class="font-black text-gray-300 text-lg">Remover Proporção</div>
-                                    </div>
-                                </label>
 
                                 <input type="radio" id="aspect-null" value="" class="hidden peer"
                                     v-model.number="selectedAspectRatio">

@@ -16,10 +16,6 @@ class PostController extends Controller
 
         $posts = Post::with('user')->orderBy('created_at', 'desc')->paginate(5, ['*'], 'page', $page);
 
-        if ($request->ajax()) {
-            return response()->json($posts);
-        }
-
         return Inertia::render('Welcome', [
             'posts' => $posts
         ]);
@@ -28,7 +24,7 @@ class PostController extends Controller
     private function getWelcomeData($page)
     {
         $posts = Post::with('user')->orderBy('created_at', 'desc')->paginate(5, ['*'], 'page', $page);
-        
+
         return $posts;
     }
 
@@ -59,6 +55,17 @@ class PostController extends Controller
             'posts' => $posts,
             'success' => 'Post criado com sucesso!'
         ]);
+    }
+
+    public function posts(Request $request)
+    {
+        $page = $request->input('page', 1);
+
+        $posts = Post::with('user')->orderBy('created_at', 'desc')->paginate(5, ['*'], 'page', $page);
+
+        if ($request->ajax()) {
+            return response()->json($posts);
+        }
     }
 
     public function user($user)
