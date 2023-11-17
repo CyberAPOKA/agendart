@@ -27,7 +27,8 @@ class PostController extends Controller
 
     private function getWelcomeData($page)
     {
-        $posts = Post::with('user')->orderBy('id')->paginate(5, ['*'], 'page', $page);
+        $posts = Post::with('user')->orderBy('created_at', 'desc')->paginate(5, ['*'], 'page', $page);
+        
         return $posts;
     }
 
@@ -50,9 +51,32 @@ class PostController extends Controller
         $page = $request->input('page', 1);
         $posts = $this->getWelcomeData($page);
 
+        if ($request->wantsJson()) {
+            return response()->json(['posts' => $posts, 'success' => 'Post criado com sucesso!']);
+        }
+
         return Inertia::render('Welcome', [
             'posts' => $posts,
             'success' => 'Post criado com sucesso!'
+        ]);
+    }
+
+    public function user($user)
+    {
+        $authUser = Auth::user()->load('posts');
+
+        if ($authUser && $authUser->user === $user) {
+            $user = $authUser;
+        } else {
+            $user = User::where('user', $user)->with('posts')->first();
+
+            if (!$user) {
+                return;
+            }
+        }
+
+        return Inertia::render('User', [
+            'user' => $user
         ]);
     }
 }

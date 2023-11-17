@@ -25,6 +25,7 @@
         "laravel-precognition-vue-inertia": "^0.5.2",
         "vue-cropperjs": "^5.0.0",
         "vue-lazyload": "^3.0.0",
+        "vue-moment": "^4.1.0",
         "vue-toast-notification": "^3.1.2"
     }
 }

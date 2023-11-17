@@ -13,6 +13,7 @@ import axios from 'axios';
 import { useToast } from 'vue-toast-notification';
 import 'vue-toast-notification/dist/theme-sugar.css';
 import { useForm } from 'laravel-precognition-vue-inertia';
+import moment from "moment";
 
 const toast = useToast();
 
@@ -24,6 +25,36 @@ onMounted(() => {
 const props = defineProps({
     posts: Object
 });
+
+function dateStringToTimeAgo(dateString) {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diff = now - date;
+
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const weeks = Math.floor(days / 7);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
+
+    if (seconds < 60) {
+        return "agora mesmo";
+    } else if (minutes < 60) {
+        return `${minutes} min atrás`;
+    } else if (hours < 24) {
+        return `${hours} h atrás`;
+    } else if (days < 7) {
+        return `${days} d atrás`;
+    } else if (weeks < 4) {
+        return `${weeks} sem atrás`;
+    } else if (months < 12) {
+        return `${months} meses atrás`;
+    } else {
+        return `${years} anos atrás`;
+    }
+}
 
 const posts = ref(props.posts);
 
@@ -44,28 +75,6 @@ const loadMorePosts = async () => {
     }
 };
 
-// const loadMorePosts = async () => {
-//     const nextPage = posts.value.current_page + 1;
-//     if (nextPage <= posts.value.last_page) {
-//         await router.visit(route('welcome', { page: nextPage }), {
-//             preserveState: true,
-//             preserveScroll: true,
-//             onSuccess: (page) => {
-//                 posts.value = {
-//                     ...posts.value,
-//                     data: [...posts.value.data, ...page.props.posts.data],
-//                     current_page: page.props.posts.current_page
-//                 };
-//             }
-//         });
-//     }
-// };
-
-const disabledButton = computed(() => {
-    return form.errors && Object.keys(form.errors).length > 0;
-});
-
-
 window.addEventListener('scroll', () => {
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
         loadMorePosts();
@@ -74,6 +83,10 @@ window.addEventListener('scroll', () => {
 
 onUnmounted(() => {
     window.removeEventListener('scroll', loadMorePosts);
+});
+
+const disabledButton = computed(() => {
+    return form.errors && Object.keys(form.errors).length > 0;
 });
 
 let step = ref(1);
@@ -151,8 +164,8 @@ const onFileSelected = (key, event) => {
 
     const img = new Image();
     img.onload = () => {
-        if (img.width < 200 || img.height < 200) {
-            toast.error("As dimensões da imagem devem ser no mínimo 200x200px.", {
+        if (img.width < 350 || img.height < 350) {
+            toast.error("As dimensões da imagem devem ser no mínimo 350x350px.", {
                 position: "top-right",
                 duration: 10000,
             });
@@ -191,12 +204,23 @@ const dataURLtoFile = (dataURL, filename) => {
 };
 
 const cropImage = () => {
-    image.value = cropper.value.getCroppedCanvas().toDataURL();
-    const dataURL = cropper.value.getCroppedCanvas().toDataURL();
+    const croppedCanvas = cropper.value.getCroppedCanvas();
+
+    if (croppedCanvas.width < 350 || croppedCanvas.height < 350) {
+        toast.error("As dimensões da imagem recortada devem ser no mínimo 350x350px.", {
+            position: "top-right",
+            duration: 10000,
+        });
+        return;
+    }
+
+    image.value = croppedCanvas.toDataURL();
+    const dataURL = croppedCanvas.toDataURL();
     const filename = form.photo_name;
     const file = dataURLtoFile(dataURL, filename);
     form.image = file;
 };
+
 
 const flipImageX = () => {
     if (cropper.value) {
@@ -264,21 +288,13 @@ const createPost = () => form.submit({
     },
     preserveScroll: true,
     onSuccess: (page) => {
+        // console.log(page);
         const success = page.props.success;
-        console.log(success);
-
-        const error = page.props.error;
-        console.log(error);
-
+        posts.value = page.props.posts;
+        // console.log(success);
+        // console.log(posts)
         if (success) {
             toast.success(success, {
-                position: "top-right",
-                duration: 5000,
-            });
-        }
-
-        if (error) {
-            toast.error(error, {
                 position: "top-right",
                 duration: 5000,
             });
@@ -303,7 +319,12 @@ const createPost = () => form.submit({
     },
 });
 
-
+const scrollToTop = () => {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+};
 </script>
 
 <template>
@@ -312,7 +333,7 @@ const createPost = () => form.submit({
     <div
         class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white">
 
-        <div class="hidden lg:fixed sm:top-0 sm:end-0 p-6 text-end z-10">
+        <div class="hidden lg:block fixed sm:top-0 sm:end-0 p-6 text-end z-10">
             <button @click="openCreatePostModal"
                 class="flex items-center justify-evenly gap-4 bg-blue-500 p-4 text-white rounded-xl" type="button">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
@@ -324,6 +345,19 @@ const createPost = () => form.submit({
                 <span class="font-bold text-2xl">Publicar</span>
             </button>
         </div>
+
+        <div class="hidden lg:block fixed sm:bottom-0 sm:end-0 p-6 text-end z-10">
+            <button @click="scrollToTop"
+                class="flex items-center justify-evenly gap-4 bg-blue-500 p-4 text-white rounded-xl" type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                    stroke="currentColor" class="w-12 h-12">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+
+            </button>
+        </div>
+
 
         <div
             class="fixed lg:hidden z-50 w-full h-16 max-w-lg -translate-x-1/2 bg-white border border-gray-200 bottom-0 left-1/2 dark:bg-gray-700 dark:border-gray-600">
@@ -341,20 +375,21 @@ const createPost = () => form.submit({
             </div>
         </div>
 
-
-
-
         <div class="p-6 lg:p-8 flex items-center justify-center flex-col gap-8">
-            <div v-for="post in posts.data" :key="post.id" class="flex justify-center flex-col mx-auto max-w-md">
-                <div>
-                    <h1 class="font-bold text-gray-900 text-left">{{ post.user.name }} - {{ post.id }}</h1>
-                    <p>{{ post.created_at }}</p>
+            <div v-for="post in posts.data" :key="post.id"
+                class="flex justify-center flex-col mx-auto max-w-md border-b-2 border-gray-300 pb-4">
+                <div class="flex flex-col lg:flex-row justify-between">
+                    <div class="flex gap-1">
+                        <h1 class="font-bold text-gray-900 text-left">{{ post.user.name }}</h1>
+                        <h2>{{ dateStringToTimeAgo(post.created_at) }}</h2>
+                    </div>
+                    <h3>{{ moment(post.created_at).format("DD/MM/YYYY [às] HH:mm") }}</h3>
                 </div>
                 <img v-if="post.image_path" v-lazy="'../storage/' + post.image_path" :class="post.image_filter"
-                    class="max-h-[30rem] mx-auto" />
-                <h2 class="text-left max-w-md">{{ post.comment }}</h2>
+                    class="max-h-[30rem] lg:w-[30rem] mx-auto bg-cover w-full" />
+                <h2 class="text-left max-w-md pt-2">{{ post.comment }}</h2>
             </div>
-
+            
         </div>
     </div>
 
