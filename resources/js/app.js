@@ -5,6 +5,10 @@ import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy/dist/vue.m';
+import VueLazyload from 'vue-lazyload'
+
+import loadimage from '../../public/assets/mclovin.jpg';
+import errorimage from '../../public/assets/mclovin.jpg';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -15,6 +19,12 @@ createInertiaApp({
         return createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)
+            .use(VueLazyload, {
+                preLoad: 1.3,
+                error: errorimage,
+                loading: loadimage,
+                attempt: 1
+            })
             .mount(el);
     },
     progress: {

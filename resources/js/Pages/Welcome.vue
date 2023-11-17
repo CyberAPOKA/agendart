@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from "vue";
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm, router } from '@inertiajs/vue3';
 import UploadFileSvg from '@/Svgs/UploadFile.vue';
 import Bars from '@/Svgs/Bars.vue';
 import XMark from '@/Svgs/XMark.vue';
@@ -9,18 +9,61 @@ import Filters from '@/Components/Filters.vue';
 import VueCropper from "vue-cropperjs";
 import "cropperjs/dist/cropper.css";
 import "../../css/filters.css";
+import axios from 'axios';
 
 onMounted(() => {
     initFlowbite();
     selectedAspectRatio.value = null;
 });
 
-defineProps({
-    canLogin: Boolean,
-    canRegister: Boolean,
-    laravelVersion: String,
-    phpVersion: String,
-    posts: Array
+const props = defineProps({
+    posts: Object
+});
+
+const posts = ref(props.posts);
+
+const loadMorePosts = async () => {
+    const nextPage = posts.value.current_page + 1;
+    if (nextPage <= posts.value.last_page) {
+        try {
+            const response = await axios.get(route('welcome', { page: nextPage }));
+            // console.log(response);
+            posts.value = {
+                ...posts.value,
+                data: [...posts.value.data, ...response.data.data],
+                current_page: response.data.current_page
+            };
+        } catch (error) {
+            console.error(error);
+        }
+    }
+};
+
+// const loadMorePosts = async () => {
+//     const nextPage = posts.value.current_page + 1;
+//     if (nextPage <= posts.value.last_page) {
+//         await router.visit(route('welcome', { page: nextPage }), {
+//             preserveState: true,
+//             preserveScroll: true,
+//             onSuccess: (page) => {
+//                 posts.value = {
+//                     ...posts.value,
+//                     data: [...posts.value.data, ...page.props.posts.data],
+//                     current_page: page.props.posts.current_page
+//                 };
+//             }
+//         });
+//     }
+// };
+
+window.addEventListener('scroll', () => {
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+        loadMorePosts();
+    }
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', loadMorePosts);
 });
 
 let step = ref(1);
@@ -82,16 +125,39 @@ watch(selectedAspectRatio, (newValue) => {
 
 const onFileSelected = (key, event) => {
     const file = event.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            imageUrl.value = e.target.result;
-        };
-        reader.readAsDataURL(file);
-        form[key] = [file];
-        form[key + "_name"] = file.name;
+
+    if (!file) {
+        return;
     }
+
+    const maxFileSize = 5 * 1024 * 1024;
+    if (file.size > maxFileSize) {
+        alert('O arquivo deve ser menor que 5MB.');
+        return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+        if (img.width < 200 || img.height < 200) {
+            alert('As dimensões da imagem devem ser no mínimo 200x200px.');
+        } else {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imageUrl.value = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            form[key] = [file];
+            form[key + "_name"] = file.name;
+        }
+    };
+
+    img.onerror = () => {
+        alert('Não foi possível carregar a imagem. Por favor, selecione um arquivo válido.');
+    };
+
+    img.src = URL.createObjectURL(file);
 };
+
 
 const dataURLtoFile = (dataURL, filename) => {
     const arr = dataURL.split(",");
@@ -208,36 +274,29 @@ const submit = () => {
 
     <div
         class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white">
-        <div v-if="canLogin" class="sm:fixed sm:top-0 sm:end-0 p-6 text-end z-10">
-            <Link v-if="$page.props.auth.Post" :href="route('dashboard')"
-                class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">
-            Dashboard</Link>
 
-            <template v-else>
-                <Link :href="route('login')"
-                    class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">
-                Log in</Link>
-
-                <Link v-if="canRegister" :href="route('register')"
-                    class="ms-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">
-                Register</Link>
-            </template>
-        </div>
-
-        <div class="p-6 lg:p-8">
-
+        <div class="sm:fixed sm:top-0 sm:end-0 p-6 text-end z-10">
             <button @click="openCreatePostModal" class="button-theme" type="button">
                 Publicar
             </button>
+        </div>
 
-            <div v-for="post in posts">
-                {{ post.user.name }} - {{ post.comment }}
-                <img v-if="post.image_path" :src="'../storage/' + post.image_path" :class="post.image_filter" />
+
+        <div class="p-6 lg:p-8 flex items-center justify-center flex-col gap-8">
+            <div v-for="post in posts.data" :key="post.id" class="flex justify-center flex-col mx-auto max-w-md">
+                <div>
+                    <h1 class="font-bold text-gray-900 text-left">{{ post.user.name }} - {{ post.id }}</h1>
+                    <p>{{ post.created_at }}</p>
+                </div>
+                <img v-if="post.image_path" v-lazy="'../storage/' + post.image_path" :class="post.image_filter"
+                    class="max-h-[30rem] mx-auto" />
+                <h2 class="text-left max-w-md">{{ post.comment }}</h2>
             </div>
+
         </div>
     </div>
 
-    <Modal :show="showCreatePostModal" @close="closeCreatePostModal"
+    <Modal :show="showCreatePostModal" @close="closeCreatePostModal" class="min-h-screen"
         :maxWidth="(form.photo.length != 0 && image && step === 2) ? '5xl' : (image && step === 1) ? '6xl' : (form.photo.length !== 0 && !image ? '4xl' : '3xl')">
         <form @submit.prevent="submit">
             <div class="flex items-center justify-between py-1 px-4 border-b rounded-t dark:border-gray-600">
@@ -271,26 +330,37 @@ const submit = () => {
                 </div>
 
                 <div v-else>
-                    <div v-if="form.photo.length != 0 && !image" class="flex flex-col lg:flex-row">
-                        <div class="relative max-w-2xl">
+                    <div v-if="form.photo.length != 0 && !image"
+                        class="relative flex flex-col lg:flex-row lg: items-center justify-between">
+                        <div class="max-w-2xl flex items-center justify-center w-full">
                             <vue-cropper ref="cropper" v-if="imageUrl" :src="imageUrl" alt="Imagem" preview=".preview"
                                 :aspect-ratio="selectedAspectRatio" :viewMode="1" :zoomOnWheel="zoomOnWheel"
-                                :key="componentKey" />
-                            <button @click="togglePopover" type="button" class="absolute bottom-2 left-2">
+                                :key="componentKey" class="min-w-[10rem] min-h-[10rem]" />
+                            <button @click="togglePopover" type="button" class="hidden lg:block absolute bottom-2 left-2">
                                 <div v-if="isPopoverOpen" class="p-2 bg-gray-900 rounded-full">
                                     <XMark />
                                 </div>
                                 <div v-else class="p-2 bg-gray-900 rounded-full">
                                     <Bars />
                                 </div>
-
                             </button>
-                            <div class="absolute bottom-16 left-2 flex flex-col justify-content-between rounded-lg"
-                                v-show="isPopoverOpen" ref="popover" style="background-color: rgba(60, 66, 77, 0.3)">
+
+                            <button @click="togglePopover" type="button"
+                                class="hidden lg:block lg:absolute bottom-2 left-2">
+                                <div v-if="isPopoverOpen" class="p-2 bg-gray-900 rounded-full">
+                                    <XMark />
+                                </div>
+                                <div v-else class="p-2 bg-gray-900 rounded-full">
+                                    <Bars />
+                                </div>
+                            </button>
+
+                            <div class="absolute bottom-16 lg:left-2 flex flex-col justify-content-between rounded-lg"
+                                v-show="isPopoverOpen" ref="popover" style="background-color: rgba(48, 49, 53, 0.7)">
                                 <h1 class="font-bold text-white border-b border-gray-900 pt-2 px-2 pb-2 text-center">
                                     Proporção
                                 </h1>
-                                <label class="py-4 px-2 hover:cursor-pointer" @click="selectedAspectRatio.value = null">
+                                <label class="py-4 px-2 hover:cursor-pointer" @click="selectedAspectRatio = null">
                                     <div class="flex items-center gap-8 w-full">
                                         <div class="font-black text-gray-300 text-lg">Remover Proporção</div>
                                     </div>
@@ -349,8 +419,8 @@ const submit = () => {
                             </div>
                         </div>
 
-                        <div class="flex pt-6 gap-4 p-4">
-                            <div class="flex flex-col gap-4">
+                        <div class="flex lg:pt-6 gap-4 p-4">
+                            <div class="grid grid-cols-2 lg:flex lg:flex-col gap-4">
                                 <button @click="flipImageX" type="button"
                                     class="bg-blue-500 p-4 text-white rounded-xl">Inverter Horizontalmente</button>
                                 <button @click="flipImageY" type="button"
@@ -361,8 +431,18 @@ const submit = () => {
                                     <span v-if="zoomOnWheel === true" class="font-bold">(Habilitado)</span>
                                     <span v-else class="font-bold">(Desabilitado)</span>
                                 </button>
+
+                                <button @click="togglePopover" type="button" class="lg:hidden flex items-center justify-center">
+                                    <div v-if="isPopoverOpen" class="p-2 bg-gray-900 rounded-full">
+                                        <XMark />
+                                    </div>
+                                    <div v-else class="p-2 bg-gray-900 rounded-full">
+                                        <Bars />
+                                    </div>
+                                </button>
                             </div>
                         </div>
+
                     </div>
                     <div v-if="image && step === 1" class="flex flex-col lg:flex-row justify-between w-full">
                         <div class="rounded-2xl shadow-all lg:max-w-3xl flex flex-col items-center justify-center w-full">
@@ -421,7 +501,8 @@ const submit = () => {
                     class="bg-blue-500 rounded-md text-white py-2 px-4">Avançar</button>
                 <button type="button" v-if="image && step === 2" @click="step--"
                     class="bg-red-500 px-4 py-2 text-white rounded-lg">Voltar</button>
-                <button type="submit" v-if="image && step === 2"
+                <button type="submit" v-if="image && step === 2" :disabled="form.comment.length === 0"
+                    :class="{ 'opacity-50 hover:cursor-not-allowed': form.comment.length === 0 }"
                     class="bg-green-500 rounded-md text-white py-2 px-4">Salvar</button>
             </div>
         </form>

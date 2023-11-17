@@ -4,21 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Post;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 
 class PostController extends Controller
 {
-    public function welcome()
+    public function welcome(Request $request)
     {
-        $canLogin = Route::has('login');
-        $canRegister = Route::has('register');
-        $posts = Post::all()->load('user');
+        $page = $request->input('page', 1);
+
+        $posts = Post::with('user')->orderBy('id')->paginate(5, ['*'], 'page', $page);
+
+        if ($request->ajax()) {
+            return response()->json($posts);
+        }
 
         return Inertia::render('Welcome', [
-            'canLogin' => $canLogin,
-            'canRegister' => $canRegister,
             'posts' => $posts
         ]);
     }

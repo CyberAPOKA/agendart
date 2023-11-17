@@ -16,8 +16,8 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
 
             $table->string('image_path');
-            $table->string('image_name');
-            $table->string('image_filter');
+            $table->string('image_name')->nullable();
+            $table->string('image_filter')->nullable();
             $table->text('comment');
 
             $table->timestamps();

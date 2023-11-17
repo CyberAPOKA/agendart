@@ -16,6 +16,7 @@
     @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
     @inertiaHead
     <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.1.1/flowbite.min.js"></script>
+    <script src="https://unpkg.com/vue-lazyload/vue-lazyload.js"></script>
 </head>
 
 <body class="font-sans antialiased">

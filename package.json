@@ -22,6 +22,7 @@
     },
     "dependencies": {
         "@material-tailwind/html": "^2.0.0",
-        "vue-cropperjs": "^5.0.0"
+        "vue-cropperjs": "^5.0.0",
+        "vue-lazyload": "^3.0.0"
     }
 }
