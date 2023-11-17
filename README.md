@@ -10,10 +10,10 @@ npm install
 php artisan key:generate
 
 abrir o servidor:
-php artisan server
+php artisan serve
 
 deixar o npm rodando:
-npm run server
+npm run dev
 
 php artisan migrate --seed (--seed opcional), fiz seeds de usuários e posts.
 
