@@ -14,7 +14,7 @@ class PostController extends Controller
     {
         $canLogin = Route::has('login');
         $canRegister = Route::has('register');
-        $posts = Post::all();
+        $posts = Post::all()->load('user');
 
         return Inertia::render('Welcome', [
             'canLogin' => $canLogin,
@@ -29,13 +29,11 @@ class PostController extends Controller
 
         $file = $request->file('image');
         if (!$file) {
-            // abort(400, 'Nenhum arquivo enviado.');
             return;
         }
 
         $user = Auth::user();
         if (!$user) {
-            // abort(403, 'Nenhum usuário logado.');
             return;
         }
 
@@ -43,9 +41,11 @@ class PostController extends Controller
         $file_path = str_replace('public/', '', $file_path);
         // dd($file_path);
         Post::create([
+            'user_id' => $user->id,
             'image_path' => $file_path,
             'image_name' => $file->getClientOriginalName(),
-            'comment' => 'teste'
+            'image_filter' => $request->input('filter'),
+            'comment' => $request->input('comment')
         ]);
     }
 }

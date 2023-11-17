@@ -443,31 +443,31 @@
     mix-blend-mode: multiply;
 }
 
-.sepia {
+.filter-sepia {
     filter: sepia(80%);
 }
 
-.grayscale {
+.filter-grayscale {
     filter: grayscale(100%);
 }
 
-.high-contrast {
+.filter-high-contrast {
     filter: contrast(150%);
 }
 
-.saturated {
+.filter-saturated {
     filter: saturate(180%);
 }
 
-.vintage {
+.filter-vintage {
     filter: sepia(60%) saturate(70%) blur(2px);
 }
 
-.blur {
+.filter-blur {
     filter: blur(4px);
 }
 
-.invert {
+.filter-invert {
     filter: invert(100%);
 }
 

@@ -5,13 +5,14 @@ import UploadFileSvg from '@/Svgs/UploadFile.vue';
 import Bars from '@/Svgs/Bars.vue';
 import XMark from '@/Svgs/XMark.vue';
 import Modal from '@/Components/Modal.vue';
+import Filters from '@/Components/Filters.vue';
 import VueCropper from "vue-cropperjs";
 import "cropperjs/dist/cropper.css";
 import "../../css/filters.css";
 
 onMounted(() => {
     initFlowbite();
-    selectedAspectRatio.value = '1';
+    selectedAspectRatio.value = null;
 });
 
 defineProps({
@@ -66,12 +67,16 @@ const imageUrl = ref(null);
 const image = ref(null);
 const cropper = ref(null);
 
-const selectedAspectRatio = ref(1);
+const selectedAspectRatio = ref('');
 
 watch(selectedAspectRatio, (newValue) => {
-    if (newValue && cropper.value) {
+    if (cropper.value) {
         cropper.value.replace(cropper.value.src, false);
-        cropper.value.setAspectRatio(newValue);
+        if (newValue) {
+            cropper.value.setAspectRatio(newValue);
+        } else {
+            cropper.value.setAspectRatio(NaN);
+        }
     }
 });
 
@@ -103,7 +108,7 @@ const dataURLtoFile = (dataURL, filename) => {
 const cropImage = () => {
     image.value = cropper.value.getCroppedCanvas().toDataURL();
     const dataURL = cropper.value.getCroppedCanvas().toDataURL();
-    const filename = form.sponsor_name;
+    const filename = form.photo_name;
     const file = dataURLtoFile(dataURL, filename);
     form.image = file;
 };
@@ -122,15 +127,23 @@ const flipImageY = () => {
     }
 };
 
+const imageWidth = ref(0);
+const imageHeight = ref(0);
+
+const onImageLoad = (event) => {
+    imageWidth.value = event.target.naturalWidth;
+    imageHeight.value = event.target.naturalHeight;
+};
+
 const imageFilter = ref('filter-original');
 
-const applyFilter = (filterName) => {
-    imageFilter.value = filterName;
+const handleFilterChange = (newFilter) => {
+    imageFilter.value = newFilter;
 };
 
 const cancel = () => {
     closeCreatePostModal();
-    form.sponsor = "";
+    form.photo = "";
     form.image = null;
     imageUrl.value = null;
     image.value = null;
@@ -149,11 +162,15 @@ const backToCrop = () => {
     form.image = null;
 }
 
+watch(imageFilter, (newValue) => {
+    form.filter = newValue;
+});
+
 const form = useForm({
-    sponsor: "",
+    photo: "",
     image: "",
-    file_type: "",
-    link: "",
+    comment: "",
+    filter: ""
 });
 
 const submit = () => {
@@ -168,10 +185,8 @@ const submit = () => {
                 position: "top-right",
                 duration: 5000,
             });
-            form.sponsor = "";
+            form.photo = "";
             form.image = null;
-            form.file_type = "";
-            form.link = "";
             imageUrl.value = null;
             image.value = null;
             if (cropper.value) {
@@ -215,16 +230,15 @@ const submit = () => {
                 Publicar
             </button>
 
-
-
             <div v-for="post in posts">
-                <img v-if="post.image_path" :src="'../storage/' + post.image_path" />
+                {{ post.user.name }} - {{ post.comment }}
+                <img v-if="post.image_path" :src="'../storage/' + post.image_path" :class="post.image_filter" />
             </div>
         </div>
     </div>
 
     <Modal :show="showCreatePostModal" @close="closeCreatePostModal"
-        :maxWidth="(image && step === 1) ? '5xl' : (form.sponsor.length !== 0 && !image ? '4xl' : '3xl')">
+        :maxWidth="(form.photo.length != 0 && image && step === 2) ? '5xl' : (image && step === 1) ? '6xl' : (form.photo.length !== 0 && !image ? '4xl' : '3xl')">
         <form @submit.prevent="submit">
             <div class="flex items-center justify-between py-1 px-4 border-b rounded-t dark:border-gray-600">
                 <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -242,22 +256,22 @@ const submit = () => {
                 </button>
             </div>
             <div>
-                <div class="flex flex-col justify-center items-center gap-y-6" v-if="form.sponsor.length === 0">
+                <div class="flex flex-col justify-center items-center gap-y-12 my-20" v-if="form.photo.length === 0">
                     <UploadFileSvg />
-                    <label for="dropzone-file-sponsor">
+                    <label for="dropzone-file-photo">
                         <div
                             class="flex justify-evenly items-center gap-2 bg-indigo-600 px-6 py-3 text-white font-bold text-xs rounded-lg uppercase shadow-all hover:cursor-pointer">
 
                             <span>Selecionar do computador</span>
                         </div>
-                        <input id="dropzone-file-sponsor" class="hidden" type="file"
-                            @change="onFileSelected('sponsor', $event)" accept=".png, .jpeg, .jpg" />
+                        <input id="dropzone-file-photo" class="hidden" type="file" @change="onFileSelected('photo', $event)"
+                            accept=".png, .jpeg, .jpg" />
                     </label>
 
                 </div>
 
                 <div v-else>
-                    <div v-if="form.sponsor.length != 0 && !image" class="flex flex-col lg:flex-row">
+                    <div v-if="form.photo.length != 0 && !image" class="flex flex-col lg:flex-row">
                         <div class="relative max-w-2xl">
                             <vue-cropper ref="cropper" v-if="imageUrl" :src="imageUrl" alt="Imagem" preview=".preview"
                                 :aspect-ratio="selectedAspectRatio" :viewMode="1" :zoomOnWheel="zoomOnWheel"
@@ -276,6 +290,26 @@ const submit = () => {
                                 <h1 class="font-bold text-white border-b border-gray-900 pt-2 px-2 pb-2 text-center">
                                     Proporção
                                 </h1>
+                                <label class="py-4 px-2 hover:cursor-pointer" @click="selectedAspectRatio.value = null">
+                                    <div class="flex items-center gap-8 w-full">
+                                        <div class="font-black text-gray-300 text-lg">Remover Proporção</div>
+                                    </div>
+                                </label>
+
+                                <input type="radio" id="aspect-null" value="" class="hidden peer"
+                                    v-model.number="selectedAspectRatio">
+                                <label for="aspect-null" class="border-b border-gray-900 py-4 px-2 hover:cursor-pointer">
+                                    <div class="flex items-center gap-8 w-full">
+                                        <div class="font-black" :class="{
+                                            'text-white text-xl': selectedAspectRatio === '',
+                                            'text-gray-300 text-lg': selectedAspectRatio !== ''
+                                        }">Original</div>
+                                        <div class="border-2 border-gray-900 p-3 rounded-md"
+                                            :class="{ 'bg-white': selectedAspectRatio === '' || selectedAspectRatio === null }">
+                                        </div>
+                                    </div>
+                                </label>
+
                                 <input type="radio" id="aspect-1" value="1" class="hidden peer"
                                     v-model.number="selectedAspectRatio">
                                 <label for="aspect-1" class="border-b border-gray-900 py-4 px-2 hover:cursor-pointer">
@@ -330,42 +364,46 @@ const submit = () => {
                             </div>
                         </div>
                     </div>
-                    <div v-if="image && step === 1" class="flex items-center w-full">
-                        <div class="rounded-2xl shadow-all">
-                            <img :src="image" :class="imageFilter" alt="Imagem recortada" />
+                    <div v-if="image && step === 1" class="flex flex-col lg:flex-row justify-between w-full">
+                        <div class="rounded-2xl shadow-all lg:max-w-3xl flex flex-col items-center justify-center w-full">
+                            <img :src="image" :class="imageFilter" alt="Imagem recortada" @load="onImageLoad" />
+                            <div v-if="imageWidth && imageHeight" class="text-md font-medium mt-2 text-center">
+                                Dimensões: <span class="text-lg font-bold text-black">{{ imageWidth }}</span> x <span
+                                    class="text-lg font-bold text-black">{{
+                                        imageHeight }}</span> pixels
+                            </div>
+                        </div>
+                        <div>
+                            <h1 class="text-center mt-2 font-bold text-xl">Filtros</h1>
+                            <div
+                                class="grid grid-cols-4 lg:grid-cols-3 gap-4 p-4 max-h-[30rem] lg:max-h-[40rem] overflow-y-auto">
+
+                                <Filters :image="image" @filter-changed="handleFilterChange" />
+
+                            </div>
                         </div>
 
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 px-4">
-                            <button @click="applyFilter('filter-1977')" type="button">
-                                <img :src="image" alt="Imagem recortada" class="max-w-20 max-h-20 filter-1977" />
-                            </button>
-
-                            <button @click="applyFilter('filter-aden')" type="button">
-                                <img :src="image" alt="Imagem recortada" class="max-w-20 max-h-20 filter-aden" />
-                            </button>
-
-                            <button @click="applyFilter('filter-amaro')" type="button">
-                                <img :src="image" alt="Imagem recortada" class="max-w-20 max-h-20 filter-amaro" />
-                            </button>
-                            <button @click="applyFilter('filter-ashby')" type="button">
-                                <img :src="image" alt="Imagem recortada" class="max-w-20 max-h-20 filter-ashby" />
-                            </button>
-
-                            <button @click="applyFilter('filter-brannan')" type="button">
-                                <img :src="image" alt="Imagem recortada" class="max-w-20 max-h-20 filter-brannan" />
-                            </button>
-
-                            <button @click="applyFilter('filter-brooklyn')" type="button">
-                                <img :src="image" alt="Imagem recortada" class="max-w-20 max-h-20 filter-brooklyn" />
-                            </button>
-
-                            <button @click="applyFilter('filter-charmes')" type="button">
-                                <img :src="image" alt="Imagem recortada" class="max-w-20 max-h-20 filter-charmes" />
-                            </button>
-                        </div>
                     </div>
 
                 </div>
+
+                <div v-if="form.photo.length != 0 && image && step === 2" class="flex flex-col lg:flex-row ">
+                    <div class="rounded-2xl shadow-all lg:max-w-2xl" :class="{
+                        'flex flex-col items-center justify-center w-full': imageWidth < 700
+                    }">
+                        <img :src="image" :class="imageFilter" alt="Imagem recortada" />
+                    </div>
+
+                    <div class="w-full lg:max-w-sm p-2">
+                        <label for="comment" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Escreva
+                            uma mensagem</label>
+                        <textarea id="comment" rows="10" v-model="form.comment"
+                            class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border-2 border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                            placeholder="O que você está pensando?"></textarea>
+                    </div>
+
+                </div>
+
             </div>
             <div class="flex items-center justify-between p-4 md:p-5 border-t">
                 <div v-if="!image && step === 1">
@@ -373,15 +411,18 @@ const submit = () => {
                         class="bg-red-500 px-4 py-2 text-white rounded-lg">Cancelar</button>
                 </div>
                 <div v-if="image && step === 1" @click="backToCrop">
-                    <button type="button">Voltar</button>
+                    <button type="button" class="bg-red-500 px-4 py-2 text-white rounded-lg">Voltar</button>
                 </div>
-                <button v-if="form.sponsor.length != 0 && !image && step === 1" type="button" @click="cropImage"
+                <button v-if="form.photo.length != 0 && !image && step === 1" type="button" @click="cropImage"
                     class="bg-blue-500 rounded-md text-white py-2 px-4">
                     <span>Avançar</span>
                 </button>
-                <button type="button" v-if="image && step === 1" @click="step++">Avançar</button>
-                <button type="button" v-if="image && step === 2" @click="step--">Voltar</button>
-                <button type="submit" v-if="image && step === 2">Salvar</button>
+                <button type="button" v-if="image && step === 1" @click="step++"
+                    class="bg-blue-500 rounded-md text-white py-2 px-4">Avançar</button>
+                <button type="button" v-if="image && step === 2" @click="step--"
+                    class="bg-red-500 px-4 py-2 text-white rounded-lg">Voltar</button>
+                <button type="submit" v-if="image && step === 2"
+                    class="bg-green-500 rounded-md text-white py-2 px-4">Salvar</button>
             </div>
         </form>
     </Modal>

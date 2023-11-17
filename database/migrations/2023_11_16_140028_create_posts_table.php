@@ -13,12 +13,15 @@ return new class extends Migration
     {
         Schema::create('posts', function (Blueprint $table) {
             $table->id();
-            
+            $table->unsignedBigInteger('user_id');
+
             $table->string('image_path');
             $table->string('image_name');
-            $table->string('comment');
+            $table->string('image_filter');
+            $table->text('comment');
 
             $table->timestamps();
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
