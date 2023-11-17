@@ -7,8 +7,8 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy/dist/vue.m';
 import VueLazyload from 'vue-lazyload'
 
-import loadimage from '../../public/assets/mclovin.jpg';
-import errorimage from '../../public/assets/mclovin.jpg';
+import loadimage from '../../public/assets/pac-man.gif';
+import errorimage from '../../public/assets/not-found.png';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from "vue";
-import { Head, Link, useForm, router } from '@inertiajs/vue3';
+import { ref, watch, onMounted, onUnmounted, computed } from "vue";
+import { Head, Link, router } from '@inertiajs/vue3';
 import UploadFileSvg from '@/Svgs/UploadFile.vue';
 import Bars from '@/Svgs/Bars.vue';
 import XMark from '@/Svgs/XMark.vue';
@@ -10,6 +10,11 @@ import VueCropper from "vue-cropperjs";
 import "cropperjs/dist/cropper.css";
 import "../../css/filters.css";
 import axios from 'axios';
+import { useToast } from 'vue-toast-notification';
+import 'vue-toast-notification/dist/theme-sugar.css';
+import { useForm } from 'laravel-precognition-vue-inertia';
+
+const toast = useToast();
 
 onMounted(() => {
     initFlowbite();
@@ -55,6 +60,11 @@ const loadMorePosts = async () => {
 //         });
 //     }
 // };
+
+const disabledButton = computed(() => {
+    return form.errors && Object.keys(form.errors).length > 0;
+});
+
 
 window.addEventListener('scroll', () => {
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
@@ -132,14 +142,20 @@ const onFileSelected = (key, event) => {
 
     const maxFileSize = 5 * 1024 * 1024;
     if (file.size > maxFileSize) {
-        alert('O arquivo deve ser menor que 5MB.');
+        toast.error("O arquivo deve ser menor que 5MB.", {
+            position: "top-right",
+            duration: 10000,
+        });
         return;
     }
 
     const img = new Image();
     img.onload = () => {
         if (img.width < 200 || img.height < 200) {
-            alert('As dimensões da imagem devem ser no mínimo 200x200px.');
+            toast.error("As dimensões da imagem devem ser no mínimo 200x200px.", {
+                position: "top-right",
+                duration: 10000,
+            });
         } else {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -152,7 +168,10 @@ const onFileSelected = (key, event) => {
     };
 
     img.onerror = () => {
-        alert('Não foi possível carregar a imagem. Por favor, selecione um arquivo válido.');
+        toast.error("A imagem deve ser do tipo PNG, JPG ou JPEG.", {
+            position: "top-right",
+            duration: 10000,
+        });
     };
 
     img.src = URL.createObjectURL(file);
@@ -232,40 +251,58 @@ watch(imageFilter, (newValue) => {
     form.filter = newValue;
 });
 
-const form = useForm({
+const form = useForm('post', route('welcome'), {
     photo: "",
     image: "",
     comment: "",
     filter: ""
 });
 
-const submit = () => {
-    form.post(route("post.create"), {
-        headers: {
-            "Content-Type": "multipart/form-data",
-        },
-        preserveScroll: true,
-        onSuccess: () => {
-            closeCreatePostModal();
-            toast.success("Arquivo salvo com Sucesso!", {
+const createPost = () => form.submit({
+    headers: {
+        "Content-Type": "multipart/form-data",
+    },
+    preserveScroll: true,
+    onSuccess: (page) => {
+        const success = page.props.success;
+        console.log(success);
+
+        const error = page.props.error;
+        console.log(error);
+
+        if (success) {
+            toast.success(success, {
                 position: "top-right",
                 duration: 5000,
             });
-            form.photo = "";
-            form.image = null;
-            imageUrl.value = null;
-            image.value = null;
-            if (cropper.value) {
-                cropper.value.destroy();
-                cropper.value = null;
-            }
-            const fileInput = document.querySelector('input[type="file"]');
-            if (fileInput) {
-                fileInput.value = "";
-            }
-        },
-    });
-};
+        }
+
+        if (error) {
+            toast.error(error, {
+                position: "top-right",
+                duration: 5000,
+            });
+        }
+
+        closeCreatePostModal();
+        step.value = 1;
+
+        form.photo = "";
+        form.image = null;
+        form.comment = "";
+        imageUrl.value = null;
+        image.value = null;
+        if (cropper.value) {
+            cropper.value.destroy();
+            cropper.value = null;
+        }
+        const fileInput = document.querySelector('input[type="file"]');
+        if (fileInput) {
+            fileInput.value = "";
+        }
+    },
+});
+
 
 </script>
 
@@ -275,11 +312,36 @@ const submit = () => {
     <div
         class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white">
 
-        <div class="sm:fixed sm:top-0 sm:end-0 p-6 text-end z-10">
-            <button @click="openCreatePostModal" class="button-theme" type="button">
-                Publicar
+        <div class="hidden lg:fixed sm:top-0 sm:end-0 p-6 text-end z-10">
+            <button @click="openCreatePostModal"
+                class="flex items-center justify-evenly gap-4 bg-blue-500 p-4 text-white rounded-xl" type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                    stroke="currentColor" class="w-10 h-10">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+
+                <span class="font-bold text-2xl">Publicar</span>
             </button>
         </div>
+
+        <div
+            class="fixed lg:hidden z-50 w-full h-16 max-w-lg -translate-x-1/2 bg-white border border-gray-200 bottom-0 left-1/2 dark:bg-gray-700 dark:border-gray-600">
+
+            <div class="flex items-center justify-center h-full w-full">
+                <button type="button" @click="openCreatePostModal"
+                    class="inline-flex items-center justify-center w-10 h-10 font-medium bg-blue-600 rounded-full hover:bg-blue-700 group focus:ring-4 focus:ring-blue-300 focus:outline-none dark:focus:ring-blue-800">
+                    <svg class="w-4 h-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 18 18">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 1v16M1 9h16" />
+                    </svg>
+                </button>
+
+            </div>
+        </div>
+
+
 
 
         <div class="p-6 lg:p-8 flex items-center justify-center flex-col gap-8">
@@ -298,7 +360,7 @@ const submit = () => {
 
     <Modal :show="showCreatePostModal" @close="closeCreatePostModal" class="min-h-screen"
         :maxWidth="(form.photo.length != 0 && image && step === 2) ? '5xl' : (image && step === 1) ? '6xl' : (form.photo.length !== 0 && !image ? '4xl' : '3xl')">
-        <form @submit.prevent="submit">
+        <form @submit.prevent="createPost">
             <div class="flex items-center justify-between py-1 px-4 border-b rounded-t dark:border-gray-600">
                 <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
                     Criar nova postagem
@@ -432,7 +494,8 @@ const submit = () => {
                                     <span v-else class="font-bold">(Desabilitado)</span>
                                 </button>
 
-                                <button @click="togglePopover" type="button" class="lg:hidden flex items-center justify-center">
+                                <button @click="togglePopover" type="button"
+                                    class="lg:hidden flex items-center justify-center">
                                     <div v-if="isPopoverOpen" class="p-2 bg-gray-900 rounded-full">
                                         <XMark />
                                     </div>
@@ -475,11 +538,19 @@ const submit = () => {
                     </div>
 
                     <div class="w-full lg:max-w-sm p-2">
-                        <label for="comment" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Escreva
-                            uma mensagem</label>
-                        <textarea id="comment" rows="10" v-model="form.comment"
-                            class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border-2 border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                            placeholder="O que você está pensando?"></textarea>
+                        <div class="relative">
+                            <label for="comment"
+                                class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Escreva
+                                uma mensagem</label>
+                            <textarea id="comment" rows="10" v-model="form.comment" @change="form.validate('comment')"
+                                class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border-2 border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                placeholder="O que você está pensando?"
+                                :class="{ 'border-red-500 focus:ring-red-500 focus:border-red-500': form.comment.length > 200 }"></textarea>
+                            <span class="absolute bottom-0 right-6">{{ form.comment.length }}/200</span>
+                        </div>
+                        <div v-if="form.invalid('comment')" class="text-red-500 font-medium">
+                            {{ form.errors.comment }}
+                        </div>
                     </div>
 
                 </div>
@@ -501,9 +572,12 @@ const submit = () => {
                     class="bg-blue-500 rounded-md text-white py-2 px-4">Avançar</button>
                 <button type="button" v-if="image && step === 2" @click="step--"
                     class="bg-red-500 px-4 py-2 text-white rounded-lg">Voltar</button>
-                <button type="submit" v-if="image && step === 2" :disabled="form.comment.length === 0"
-                    :class="{ 'opacity-50 hover:cursor-not-allowed': form.comment.length === 0 }"
-                    class="bg-green-500 rounded-md text-white py-2 px-4">Salvar</button>
+                <button type="submit" v-if="image && step === 2" class="bg-green-500 rounded-md text-white py-2 px-4"
+                    :disabled="disabledButton || !image || form.comment.length === 0 || form.comment.length > 200" :class="{
+                        'opacity-50 cursor-not-allowed': disabledButton || !image || form.comment.length === 0 || form.comment.length > 200
+                    }">
+                    Salvar
+                </button>
             </div>
         </form>
     </Modal>

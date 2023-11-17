@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\PostController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
+use Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -22,6 +22,5 @@ Route::middleware([
 ])->group(function () {
 
     Route::get('/', [PostController::class, 'welcome'])->name('welcome');
-    Route::post('post-create', [PostController::class, 'create'])->name('post.create');
-
+    Route::post('/', [PostController::class, 'create'])->name('post.create')->middleware([HandlePrecognitiveRequests::class]);
 });

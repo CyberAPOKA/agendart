@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PostRequest;
 use App\Models\Post;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,7 +14,7 @@ class PostController extends Controller
     {
         $page = $request->input('page', 1);
 
-        $posts = Post::with('user')->orderBy('id')->paginate(5, ['*'], 'page', $page);
+        $posts = Post::with('user')->orderBy('created_at', 'desc')->paginate(5, ['*'], 'page', $page);
 
         if ($request->ajax()) {
             return response()->json($posts);
@@ -24,29 +25,34 @@ class PostController extends Controller
         ]);
     }
 
-    public function create(Request $request)
+    private function getWelcomeData($page)
     {
-        // dd($request->all());
+        $posts = Post::with('user')->orderBy('id')->paginate(5, ['*'], 'page', $page);
+        return $posts;
+    }
 
+    public function create(PostRequest $request)
+    {
         $file = $request->file('image');
-        if (!$file) {
-            return;
-        }
-
         $user = Auth::user();
-        if (!$user) {
-            return;
-        }
 
         $file_path = $file->store('public/posts/' . $user->id);
         $file_path = str_replace('public/', '', $file_path);
-        // dd($file_path);
+
         Post::create([
             'user_id' => $user->id,
             'image_path' => $file_path,
             'image_name' => $file->getClientOriginalName(),
             'image_filter' => $request->input('filter'),
             'comment' => $request->input('comment')
+        ]);
+
+        $page = $request->input('page', 1);
+        $posts = $this->getWelcomeData($page);
+
+        return Inertia::render('Welcome', [
+            'posts' => $posts,
+            'success' => 'Post criado com sucesso!'
         ]);
     }
 }

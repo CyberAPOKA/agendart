@@ -22,7 +22,9 @@
     },
     "dependencies": {
         "@material-tailwind/html": "^2.0.0",
+        "laravel-precognition-vue-inertia": "^0.5.2",
         "vue-cropperjs": "^5.0.0",
-        "vue-lazyload": "^3.0.0"
+        "vue-lazyload": "^3.0.0",
+        "vue-toast-notification": "^3.1.2"
     }
 }

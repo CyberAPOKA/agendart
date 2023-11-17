@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('image_path');
             $table->string('image_name')->nullable();
             $table->string('image_filter')->nullable();
-            $table->text('comment');
+            $table->string('comment');
 
             $table->timestamps();
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
