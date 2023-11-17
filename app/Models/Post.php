@@ -17,6 +17,7 @@ class Post extends Model
         'comment',
     ];
 
+    //faz a relação que um post pertece a um usuário
     public function user()
     {
         return $this->belongsTo(User::class);

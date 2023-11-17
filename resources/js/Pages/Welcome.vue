@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted, computed } from "vue";
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import UploadFileSvg from '@/Svgs/UploadFile.vue';
 import Bars from '@/Svgs/Bars.vue';
 import XMark from '@/Svgs/XMark.vue';
@@ -28,6 +28,7 @@ const props = defineProps({
 
 const posts = ref(props.posts);
 
+//ele bate na rota posts que busca na função posts e retorna um json com mais posts e outros dados de paginações.
 const loadMorePosts = async () => {
     const nextPage = posts.value.current_page + 1;
     if (nextPage <= posts.value.last_page) {
@@ -45,17 +46,19 @@ const loadMorePosts = async () => {
     }
 };
 
+//adiciona um evento de scroll qd o usuário chegar no final da página e então chama a função acima para buscar mais posts
 window.addEventListener('scroll', () => {
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
         loadMorePosts();
     }
 });
 
+//evita que o evento se propague para outras páginas (um pouco inútil para esse contexto)
 onUnmounted(() => {
     window.removeEventListener('scroll', loadMorePosts);
 });
 
-
+//retorna o tempo de acordo com a data
 function dateStringToTimeAgo(dateString) {
     const now = new Date();
     const date = new Date(dateString);
@@ -86,14 +89,16 @@ function dateStringToTimeAgo(dateString) {
     }
 }
 
+//desabilita o botão se tiver erros do backend.
 const disabledButton = computed(() => {
     return form.errors && Object.keys(form.errors).length > 0;
 });
 
+//step para controlar melhor o formulário.
 let step = ref(1);
 
+//habilitar/remover e forçar a atualizar o zoom
 const zoomOnWheel = ref(false);
-
 const componentKey = ref(0);
 
 const toggleZoomOnWheel = () => {
@@ -101,6 +106,7 @@ const toggleZoomOnWheel = () => {
     componentKey.value++;
 }
 
+//abrir o popover de resize de imagens
 const isPopoverOpen = ref(false);
 const popover = ref(null);
 
@@ -122,6 +128,7 @@ onUnmounted(() => {
     window.removeEventListener('mousedown', closePopover);
 });
 
+//abre a modal de criar post
 const showCreatePostModal = ref(false);
 const openCreatePostModal = () => {
     showCreatePostModal.value = true;
@@ -147,6 +154,7 @@ watch(selectedAspectRatio, (newValue) => {
     }
 });
 
+//pega a imagem e faz validações
 const onFileSelected = (key, event) => {
     const file = event.target.files[0];
 
@@ -191,7 +199,7 @@ const onFileSelected = (key, event) => {
     img.src = URL.createObjectURL(file);
 };
 
-
+//converte um data url para um objeto de arquivo em JS.
 const dataURLtoFile = (dataURL, filename) => {
     const arr = dataURL.split(",");
     const mime = arr[0].match(/:(.*?);/)[1];
@@ -204,6 +212,7 @@ const dataURLtoFile = (dataURL, filename) => {
     return new File([u8arr], filename, { type: mime });
 };
 
+//faz o recorte da imagem se as dimensões forem maior q 350 por 350px
 const cropImage = () => {
     const croppedCanvas = cropper.value.getCroppedCanvas();
 
@@ -222,14 +231,14 @@ const cropImage = () => {
     form.image = file;
 };
 
-
+//inverte no eixo X
 const flipImageX = () => {
     if (cropper.value) {
         const currentScaleX = cropper.value.getData().scaleX;
         cropper.value.scaleX(currentScaleX * -1);
     }
 };
-
+//inverte no eixo Y
 const flipImageY = () => {
     if (cropper.value) {
         const currentScaleY = cropper.value.getData().scaleY;
@@ -251,6 +260,7 @@ const handleFilterChange = (newFilter) => {
     imageFilter.value = newFilter;
 };
 
+//cancela e reseta todos os valores.
 const cancel = () => {
     closeCreatePostModal();
     form.photo = "";
@@ -267,6 +277,7 @@ const cancel = () => {
     }
 };
 
+//faz voltar uma etata do form.
 const backToCrop = () => {
     image.value = null;
     form.image = null;
@@ -276,6 +287,7 @@ watch(imageFilter, (newValue) => {
     form.filter = newValue;
 });
 
+//inicia o form.
 const form = useForm('post', route('welcome'), {
     photo: "",
     image: "",
@@ -283,11 +295,13 @@ const form = useForm('post', route('welcome'), {
     filter: ""
 });
 
+//função que manda os dados para o backend.
 const createPost = () => form.submit({
     headers: {
         "Content-Type": "multipart/form-data",
     },
     preserveScroll: true,
+
     onSuccess: (page) => {
         // console.log(page);
         const success = page.props.success;
@@ -303,23 +317,16 @@ const createPost = () => form.submit({
 
         closeCreatePostModal();
         step.value = 1;
-
         form.photo = "";
         form.image = null;
         form.comment = "";
+        imageFilter.value = "filter-original"
         imageUrl.value = null;
         image.value = null;
-        if (cropper.value) {
-            cropper.value.destroy();
-            cropper.value = null;
-        }
-        const fileInput = document.querySelector('input[type="file"]');
-        if (fileInput) {
-            fileInput.value = "";
-        }
     },
 });
 
+//ao clicar leva para o topo da pagina com movimento suave.
 const scrollToTop = () => {
     window.scrollTo({
         top: 0,
@@ -406,7 +413,7 @@ const scrollToTop = () => {
                 </div>
                 <img v-if="post.image_path" v-lazy="'../storage/' + post.image_path" :class="post.image_filter"
                     class="max-h-[30rem] lg:w-[30rem] mx-auto bg-cover w-full" />
-                <h2 class="text-left max-w-md pt-2">{{ post.comment }}</h2>
+                <h2 class="text-left max-w-md pt-2 break-words">{{ post.comment }}</h2>
             </div>
 
         </div>
@@ -436,7 +443,6 @@ const scrollToTop = () => {
                     <label for="dropzone-file-photo">
                         <div
                             class="flex justify-evenly items-center gap-2 bg-blue-500 px-6 py-3 text-white font-bold text-xs rounded-lg uppercase shadow-all hover:cursor-pointer">
-
                             <span>Selecionar do computador</span>
                         </div>
                         <input id="dropzone-file-photo" class="hidden" type="file" @change="onFileSelected('photo', $event)"

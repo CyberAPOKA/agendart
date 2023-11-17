@@ -59,6 +59,7 @@ class User extends Authenticatable
         'profile_photo_url',
     ];
 
+    //faz a relação onde um usuário pode ter vários posts.
     public function posts()
     {
         return $this->hasMany(Post::class);

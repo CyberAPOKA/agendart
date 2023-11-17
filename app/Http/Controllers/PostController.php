@@ -12,6 +12,8 @@ class PostController extends Controller
 {
     public function welcome(Request $request)
     {
+        //retorna a página welcome com a paginação (5 em 5) e em ordem descrecente pela data.
+
         $page = $request->input('page', 1);
 
         $posts = Post::with('user')->orderBy('created_at', 'desc')->paginate(5, ['*'], 'page', $page);
@@ -30,9 +32,11 @@ class PostController extends Controller
 
     public function create(PostRequest $request)
     {
+        //faz a criação de posts de acordo com os dados vindo do request e retorna uma mensagem flash com os posts atualizados.
         $file = $request->file('image');
         $user = Auth::user();
 
+        //remove o 'public' para salvar no banco
         $file_path = $file->store('public/posts/' . $user->id);
         $file_path = str_replace('public/', '', $file_path);
 
@@ -59,6 +63,7 @@ class PostController extends Controller
 
     public function posts(Request $request)
     {
+        //busca novos posts quando o usuário scrollar a página no final.
         $page = $request->input('page', 1);
 
         $posts = Post::with('user')->orderBy('created_at', 'desc')->paginate(5, ['*'], 'page', $page);
@@ -66,24 +71,5 @@ class PostController extends Controller
         if ($request->ajax()) {
             return response()->json($posts);
         }
-    }
-
-    public function user($user)
-    {
-        $authUser = Auth::user()->load('posts');
-
-        if ($authUser && $authUser->user === $user) {
-            $user = $authUser;
-        } else {
-            $user = User::where('user', $user)->with('posts')->first();
-
-            if (!$user) {
-                return;
-            }
-        }
-
-        return Inertia::render('User', [
-            'user' => $user
-        ]);
     }
 }

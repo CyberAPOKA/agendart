@@ -22,15 +22,11 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
-
-    Route::get('/', [PostController::class, 'welcome'])->name('welcome');
-    Route::get('/posts', [PostController::class, 'posts'])->name('posts');
     
+    Route::get('/', [PostController::class, 'welcome'])->name('welcome');
+
     Route::post('/', [PostController::class, 'create'])->name('post.create')->middleware([HandlePrecognitiveRequests::class]);
 
-    Route::get('/{user}', [PostController::class, 'user'])->name('user');
+    Route::get('/posts', [PostController::class, 'posts'])->name('posts');
+
 });

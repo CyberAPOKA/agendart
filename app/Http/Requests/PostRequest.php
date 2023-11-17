@@ -23,6 +23,7 @@ class PostRequest extends FormRequest
      */
     public function rules(): array
     {
+        //aplica as validações para a imagem e a mensagem.
         return [
             'image' => [
                 'required',
@@ -48,6 +49,7 @@ class PostRequest extends FormRequest
 
     public function messages()
     {
+        //traduz as mensagens.
         return [
             'image.required' => 'A imagem é obrigatória.',
             'image.file' => 'Deve ser uma imagem PNG, JPG ou JPEG.',
